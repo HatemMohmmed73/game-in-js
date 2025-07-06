@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=123
+      - DB_NAME=postgres
+      - DB_PORT=5432
+    depends_on:
+      - postgres
+    networks:
+      - game-network
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_PASSWORD=123
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - game-network
+
+volumes:
+  postgres_data:
+
+networks:
+  game-network:
+    driver: bridge 
