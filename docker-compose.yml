@@ -4,7 +4,7 @@ services:
   app:
     build: .
     ports:
-      - "3000:3000"
+      - "8080:1234"
     environment:
       - DB_HOST=postgres
       - DB_USER=postgres

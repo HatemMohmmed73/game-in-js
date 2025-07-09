@@ -30,7 +30,7 @@ function handleCellClick(idx) {
     saveGame(currentPlayer);
   } else if (cells.every(cell => cell)) {
     statusDiv.textContent = "It's a draw!";
-    gameActive = false;
+    gameActive = false; 
     saveGame('draw');
   } else {
     currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
