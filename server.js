@@ -46,6 +46,21 @@ initDatabase();
 // Middleware
 app.use(express.json());
 
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  try {
+    // Simple database check
+    db.prepare('SELECT 1').get();
+    res.status(200).json({ status: 'ok' });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(500).json({ status: 'error', message: 'Service unavailable' });
+  }
+});
+
 // API Routes
 app.post('/api/games', (req, res) => {
   try {
