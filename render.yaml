@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: tic-tac-toe
+    env: docker
+    build:
+      dockerfile: Dockerfile
+    envVars:
+      - key: PORT
+        value: 10000
+    plan: free
+    numInstances: 1
+    healthCheckPath: /
