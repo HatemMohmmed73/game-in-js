@@ -1,5 +1,40 @@
 # 🛠️ Tutorial: Advanced CI/CD with GitHub Actions, Docker, and Render
 
+## 🐳 Running with Docker
+
+### Prerequisites
+
+- Docker installed on your system
+
+### Build the Docker Image
+
+```bash
+docker build -t game-in-js .
+```
+
+### Run the Container
+
+```bash
+docker run -d -p 10000:10000 --name game-container game-in-js
+```
+
+### Access the Application
+
+Open your web browser and navigate to:
+
+```
+http://localhost:10000
+```
+
+### Manage the Container
+
+- **Stop the container**: `docker stop game-container`
+- **Start the container again**: `docker start game-container`
+- **View logs**: `docker logs game-container`
+- **Remove the container**: `docker rm -f game-container`
+
+---
+
 This guide will walk you through setting up a robust CI/CD pipeline for a Node.js app, including linting, testing, Docker image build & push, and automated deployment to Render.
 
 ---
