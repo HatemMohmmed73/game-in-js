@@ -83,8 +83,6 @@ Go to your repo’s **Settings > Secrets and variables > Actions** and add:
 - On push to `main`, the workflow triggers a `curl` POST to the Render deploy hook.
 - Render pulls the latest Docker image from GHCR and deploys your app.
 
-**No AWS or other cloud secrets are needed if you use Render’s deploy hook!**
-
 ---
 
 ### 7. How to Use and Maintain the Pipeline
