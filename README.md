@@ -1,10 +1,63 @@
 # 🛠️ Tutorial: Advanced CI/CD with GitHub Actions, Docker, and Render
 
-## 🐳 Running with Docker
+This guide will walk you through setting up a robust CI/CD pipeline for a Node.js app, including linting, testing, Docker image build & push, and automated deployment to Render.
 
-### Prerequisites
+---
 
-- Docker installed on your system
+### 1. Project Structure
+
+Your project should look something like this:
+
+```
+.
+├── .github/
+│   └── workflows/
+│       └── deploy.yml         # Main CI/CD workflow
+├── Dockerfile                 # Docker build instructions
+├── package.json
+├── README.md
+└── ... (your app code)
+```
+
+---
+
+### 2. CI/CD Pipeline Overview
+
+The pipeline will:
+
+- Lint and auto-format code (ESLint, Prettier)
+- Run all tests and upload coverage
+- Build a Docker image and push to GitHub Container Registry (GHCR)
+- Deploy to Render using a deploy hook
+
+---
+
+### 3. GitHub Actions Workflow
+
+The workflow file is at `.github/workflows/deploy.yml`.  
+It is triggered on:
+
+- Pushes to `main`, `develop`, or any feature/release/hotfix branch
+- Pull requests to `main` or `develop`
+- Manual dispatch (with environment selection)
+
+**Jobs in the workflow:**
+
+- `lint`: Checks code style with ESLint and Prettier
+- `test`: Runs tests and uploads coverage
+- `build`: Builds and pushes Docker image to GHCR
+- `render-deploy`: Triggers a deployment on Render using a webhook
+
+---
+
+### 4.🐳 Running with Docker
+
+Your `Dockerfile` should:
+
+- Use a stable Node.js base image
+- Copy dependencies and source code
+- Set up environment variables and expose the app port
+- Define the default command to run your app
 
 ### Dockerfile
 
@@ -87,82 +140,6 @@ http://localhost:10000
 - **Start the container again**: `docker start game-container`
 - **View logs**: `docker logs game-container`
 - **Remove the container**: `docker rm -f game-container`
-
----
-
-This guide will walk you through setting up a robust CI/CD pipeline for a Node.js app, including linting, testing, Docker image build & push, and automated deployment to Render.
-
----
-
-### 1. Project Structure
-
-Your project should look something like this:
-
-```
-.
-├── .github/
-│   └── workflows/
-│       └── deploy.yml         # Main CI/CD workflow
-├── Dockerfile                 # Docker build instructions
-├── package.json
-├── README.md
-└── ... (your app code)
-```
-
----
-
-### 2. CI/CD Pipeline Overview
-
-The pipeline will:
-
-- Lint and auto-format code (ESLint, Prettier)
-- Run all tests and upload coverage
-- Build a Docker image and push to GitHub Container Registry (GHCR)
-- Deploy to Render using a deploy hook
-
----
-
-### 3. GitHub Actions Workflow
-
-The workflow file is at `.github/workflows/deploy.yml`.  
-It is triggered on:
-
-- Pushes to `main`, `develop`, or any feature/release/hotfix branch
-- Pull requests to `main` or `develop`
-- Manual dispatch (with environment selection)
-
-**Jobs in the workflow:**
-
-- `lint`: Checks code style with ESLint and Prettier
-- `test`: Runs tests and uploads coverage
-- `build`: Builds and pushes Docker image to GHCR
-- `render-deploy`: Triggers a deployment on Render using a webhook
-
----
-
-### 4. Docker Integration
-
-Your `Dockerfile` should:
-
-- Use a stable Node.js base image
-- Copy dependencies and source code
-- Set up environment variables and expose the app port
-- Define the default command to run your app
-
-Example:
-
-```dockerfile
-FROM node:20-alpine
-WORKDIR /usr/src/app
-COPY package*.json ./
-RUN npm install --production
-COPY . .
-RUN mkdir -p /usr/src/app/data
-ENV NODE_ENV=production
-ENV PORT=10000
-EXPOSE 10000
-CMD ["node", "server.js"]
-```
 
 ---
 
