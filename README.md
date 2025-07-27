@@ -84,19 +84,12 @@ Set these in your repository's **Settings > Secrets and variables > Actions**:
 
 ---
 
-## Customizing Deployment
-
-- The deploy action (`.github/actions/deploy/action.yml`) can be customized for different environments.
-- By default, Render deployment is triggered by webhook and does not require AWS or other cloud secrets.
-
----
 
 ## Troubleshooting
 
 - **Formatting errors**: Run Prettier locally and commit.
 - **Docker push errors**: Check PAT scopes and secret name.
 - **Render deploy fails**: Verify the `RENDER_DEPLOY_HOOK` secret is correct.
-- **AWS errors**: Remove AWS-specific steps if not using AWS.
 
 ---
 
