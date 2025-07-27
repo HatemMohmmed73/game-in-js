@@ -1,16 +1,16 @@
-name: 'Deploy Tic-Tac-Toe App'
-description: 'Deploy the Tic-Tac-Toe application to the specified environment'
+name: "Deploy Tic-Tac-Toe App"
+description: "Deploy the Tic-Tac-Toe application to the specified environment"
 
 inputs:
   environment:
-    description: 'Target environment (development, staging, production)'
+    description: "Target environment (development, staging, production)"
     required: true
   version:
-    description: 'Application version to deploy'
+    description: "Application version to deploy"
     required: true
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Configure AWS Credentials
       if: inputs.environment == 'production' || inputs.environment == 'staging'
@@ -24,7 +24,7 @@ runs:
       shell: bash
       run: |
         echo "Deploying version ${{ inputs.version }} to ${{ inputs.environment }}"
-        
+
         # Example deployment commands (customize based on your infrastructure)
         case "${{ inputs.environment }}" in
           development)
@@ -57,14 +57,14 @@ runs:
             #   --s3-location bucket=my-deployment-bucket,key=app-${{ inputs.version }}.zip,bundleType=zip
             ;;
         esac
-      
+
     - name: Verify deployment
       shell: bash
       run: |
         # Add verification steps (e.g., health check, smoke tests)
         echo "Verifying deployment to ${{ inputs.environment }}..."
         # Example: curl -sSf ${{ env.DEPLOYMENT_URL }}/health
-        
+
     - name: Output deployment URL
       id: set-output
       shell: bash
@@ -75,5 +75,5 @@ runs:
 
 outputs:
   url:
-    description: 'The URL where the application was deployed'
+    description: "The URL where the application was deployed"
     value: ${{ steps.set-output.outputs.url }}

@@ -1,5 +1,5 @@
 // Global test setup
-console.log('Jest test environment setup complete');
+console.log("Jest test environment setup complete");
 
 // Mock any global objects or functions needed for testing
 global.console = {

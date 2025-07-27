@@ -1,12 +1,12 @@
 module.exports = {
-  testEnvironment: 'node',
-  testMatch: ['**/__tests__/**/*.test.js'],
+  testEnvironment: "node",
+  testMatch: ["**/__tests__/**/*.test.js"],
   collectCoverageFrom: [
-    '**/*.js',
-    '!**/node_modules/**',
-    '!**/coverage/**',
-    '!**/__tests__/**',
-    '!jest.config.js',
+    "**/*.js",
+    "!**/node_modules/**",
+    "!**/coverage/**",
+    "!**/__tests__/**",
+    "!jest.config.js",
   ],
   coverageThreshold: {
     global: {
@@ -16,5 +16,5 @@ module.exports = {
       statements: 0,
     },
   },
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
 };
