@@ -9,6 +9,7 @@ This document explains the automated CI/CD (Continuous Integration and Continuou
 The CI/CD pipeline automatically checks code style, runs tests, builds Docker images, and deploys your app to Render whenever you push or open a pull request.
 
 ### Main Pipeline Features
+
 - **Linting**: Ensures code style and formatting (ESLint & Prettier)
 - **Testing**: Runs automated tests and collects coverage
 - **Docker Build & Push**: Builds Docker images and pushes them to GitHub Container Registry (GHCR)
@@ -17,7 +18,9 @@ The CI/CD pipeline automatically checks code style, runs tests, builds Docker im
 ---
 
 ## Workflow File
+
 The main workflow is defined in:
+
 ```
 .github/workflows/deploy.yml
 ```
@@ -27,27 +30,34 @@ The main workflow is defined in:
 ## How It Works
 
 ### Triggers
+
 - **On push** to `main`, `develop`, or any `feature/*`, `release/*`, or `hotfix/*` branch
 - **On pull request** to `main` or `develop`
 - **Manually** via GitHub Actions workflow dispatch (with environment selection)
 
 ### Jobs
+
 #### 1. Lint
+
 - Runs ESLint and Prettier checks
 - Ensures code quality and consistent formatting
 
 #### 2. Test
+
 - Runs all project tests
 - Uploads test coverage report
 
 #### 3. Build
+
 - Builds a Docker image for the app
 - Pushes the image to GitHub Container Registry (GHCR) using a Personal Access Token (PAT)
 
 #### 4. Deploy
+
 - Deploys to the selected environment (development, staging, production) using a custom deploy action (can be customized as needed)
 
 #### 5. Render Deploy
+
 - On every push to `main`, triggers a deployment on Render.com using the `RENDER_DEPLOY_HOOK` secret
 
 ---
@@ -67,20 +77,22 @@ Set these in your repository's **Settings > Secrets and variables > Actions**:
 2. **Check Actions tab** in GitHub for pipeline status and logs.
 3. **If you see formatting errors** (Prettier), run `npx prettier --write .` locally and commit the changes.
 4. **If Docker push fails**:
-    - Make sure your `GHCR_PAT` is a classic token with the correct scopes (see above).
-    - Update the secret if needed.
+   - Make sure your `GHCR_PAT` is a classic token with the correct scopes (see above).
+   - Update the secret if needed.
 5. **To deploy to Render manually**:
-    - Go to the Actions tab, select the workflow, and use the manual dispatch with your desired environment.
+   - Go to the Actions tab, select the workflow, and use the manual dispatch with your desired environment.
 
 ---
 
 ## Customizing Deployment
+
 - The deploy action (`.github/actions/deploy/action.yml`) can be customized for different environments.
 - By default, Render deployment is triggered by webhook and does not require AWS or other cloud secrets.
 
 ---
 
 ## Troubleshooting
+
 - **Formatting errors**: Run Prettier locally and commit.
 - **Docker push errors**: Check PAT scopes and secret name.
 - **Render deploy fails**: Verify the `RENDER_DEPLOY_HOOK` secret is correct.
@@ -89,6 +101,7 @@ Set these in your repository's **Settings > Secrets and variables > Actions**:
 ---
 
 ## References
+
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
 - [Render Deploy Hooks](https://render.com/docs/deploy-hooks)
 - [GitHub Packages: Docker](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
