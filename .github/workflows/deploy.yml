@@ -169,14 +169,5 @@ jobs:
       - name: Stop background server (optional)
         run: |
           pkill -f "node" || true
-
-  deploy:
-    name: Deploy to Render
-    runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - name: Trigger Render Deploy Hook
-        run: curl -X POST "$RENDER_DEPLOY_HOOK"
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
