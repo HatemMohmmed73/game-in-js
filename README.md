@@ -116,8 +116,8 @@ Go to your repo’s **Settings > Secrets and variables > Actions** and add:
 - [Render Deploy Hooks](https://render.com/docs/deploy-hooks)
 - [GitHub Packages: Docker](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
 
-<<<<<<< HEAD
-=======
+# <<<<<<< HEAD
+
 ---
 
 # Tic-Tac-Toe Project CI/CD Pipeline
@@ -223,4 +223,5 @@ Set these in your repository's **Settings > Secrets and variables > Actions**:
 ---
 
 For questions or help, check your Actions logs or open an issue in the repository.
->>>>>>> 18d3e9a (1)
+
+> > > > > > > 18d3e9a (1)
