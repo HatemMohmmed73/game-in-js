@@ -1,4 +1,4 @@
-name: Tic-Tac-Toe CI/CD Pipeline
+name: Node.js Docker CI/CD Pipeline
 
 on:
   push:
@@ -26,11 +26,14 @@ on:
 
 # Environment configurations
 env:
-  DOCKER_IMAGE: tic-tac-toe-app
+  # Customize these values for your app
+  DOCKER_IMAGE: nodejs-app  # Change this to your app's name
   DOCKER_REGISTRY: ghcr.io
   DOCKER_USERNAME: ${{ github.actor }}
   DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   VERSION: ${{ github.sha }}
+  # Configure your app's port (default: 3000)
+  APP_PORT: 3000
 
 defaults:
   run:
@@ -49,10 +52,11 @@ jobs:
           cache: "npm"
       - name: Install dependencies
         run: npm ci
-      - name: Run ESLint
-        run: npm run lint
-      - name: Check formatting
-        run: npx prettier --check .
+      # Uncomment and customize these steps based on your project's needs
+      # - name: Run ESLint
+      #   run: npm run lint
+      # - name: Check formatting
+      #   run: npx prettier --check .
 
   test:
     name: Run Tests
@@ -69,11 +73,12 @@ jobs:
         run: npm ci
       - name: Run tests
         run: npm test
-      - name: Upload test coverage
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage/lcov.info
+      # Uncomment and configure if you're using code coverage
+      # - name: Upload test coverage
+      #   uses: codecov/codecov-action@v4
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     file: ./coverage/lcov.info
 
   build:
     name: Build and Push Image
@@ -120,6 +125,7 @@ jobs:
         run: curl -X POST "$RENDER_DEPLOY_HOOK"
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+      # Health check (customize the health check endpoint if needed)
       - name: Start server in background
         run: |
           npm start &
@@ -127,13 +133,21 @@ jobs:
       - name: Health check with retries
         run: |
           for i in {1..10}; do
-            curl -f http://localhost:3000/health && break
-            echo "Waiting for server to be ready..."
+            if curl -f http://localhost:${{ env.APP_PORT }}/health 2>/dev/null; then
+              echo "Server is up and running!"
+              exit 0
+            fi
+            echo "Waiting for server to be ready... (Attempt $i/10)"
             sleep 2
           done
+          echo "Health check failed after 10 attempts"
+          exit 1
 
-      - name: Stop background server (optional)
+      - name: Stop background server
+        if: always()
         run: |
-          pkill -f "node" || true
+          pkill -f "node" || echo "No node process found"
+          # Ensure the port is freed
+          fuser -k ${{ env.APP_PORT }}/tcp 2>/dev/null || true
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
