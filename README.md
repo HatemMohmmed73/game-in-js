@@ -120,10 +120,54 @@ http://localhost:10000
 
 ### 5. GitHub Secrets Setup
 
-Go to your repo’s **Settings > Secrets and variables > Actions** and add:
+#### 5.1 Generate GitHub Personal Access Token (GHCR_PAT)
 
-- `GHCR_PAT`: A classic GitHub Personal Access Token with `write:packages`, `read:packages`, and `repo` scopes
-- `RENDER_DEPLOY_HOOK`: Your Render deploy hook URL (from your Render dashboard)
+1. Go to your GitHub account settings:
+   - Click on your profile photo in the top-right corner
+   - Select **Settings**
+   - Scroll down to **Developer settings** in the left sidebar
+   - Click on **Personal access tokens** > **Tokens (classic)**
+   - Click **Generate new token** > **Generate new token (classic)**
+
+2. Configure the token:
+   - **Note**: `GHCR_PAT for [Your-Repo-Name]`
+   - **Expiration**: Set an expiration or choose "No expiration" for long-lived tokens
+   - **Select scopes**:
+     - `repo` (Full control of private repositories)
+     - `write:packages` (Upload packages to GitHub Package Registry)
+     - `read:packages` (Download packages from GitHub Package Registry)
+
+3. Generate and copy the token (you won't be able to see it again!)
+
+4. Add the token to your repository:
+   - Go to your repository
+   - **Settings** > **Secrets and variables** > **Actions**
+   - Click **New repository secret**
+   - **Name**: `GHCR_PAT`
+   - **Value**: Paste your token
+   - Click **Add secret**
+
+#### 5.2 Create Render Deploy Hook (RENDER_DEPLOY_HOOK)
+
+1. Go to your Render Dashboard (https://dashboard.render.com/)
+2. Select your web service
+3. Click on **Environment** in the left sidebar
+4. Scroll down to the **Webhooks** section
+5. Click **Add Webhook**
+6. Configure the webhook:
+   - **Name**: `GitHub Actions Deploy`
+   - **Environment**: `Production` (or your preferred environment)
+   - **Branch**: `main` (or your default branch)
+   - **Auto-deploy**: Enable if you want automatic deployments
+7. Click **Create Webhook**
+8. Copy the **Webhook URL**
+9. Add it to your GitHub repository:
+   - Go to your repository
+   - **Settings** > **Secrets and variables** > **Actions**
+   - Click **New repository secret**
+   - **Name**: `RENDER_DEPLOY_HOOK`
+   - **Value**: Paste the webhook URL
+   - Click **Add secret**
 
 ---
 
