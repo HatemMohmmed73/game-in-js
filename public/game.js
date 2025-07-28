@@ -101,8 +101,8 @@ async function updateStats() {
 
 function restartGame() {
   cells = Array(9).fill(null);
-  currentPlayer = "X"
-  gameActive = tr
+  currentPlayer = "X";
+  gameActive = true;
   moves = [];
   statusDiv.textContent = `Player ${currentPlayer}'s turn`;
   renderBoard();
