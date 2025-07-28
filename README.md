@@ -196,7 +196,142 @@ http://localhost:10000
 
 ---
 
-### 9. References
+### 9. Setup deploy.yml for Any Node.js App
+
+Follow these steps to set up the `deploy.yml` workflow in any Node.js project:
+
+1. **Create the workflow directory and file**
+
+   ```bash
+   mkdir -p .github/workflows
+   touch .github/workflows/deploy.yml
+   ```
+
+2. **Copy the following configuration** into `.github/workflows/deploy.yml`:
+
+   ```yaml
+   name: CI/CD Pipeline
+
+   on:
+     push:
+       branches: [main, develop, "feature/*", "release/*", "hotfix/*"]
+     pull_request:
+       branches: [main, develop]
+     workflow_dispatch:
+       inputs:
+         environment:
+           description: "Environment to deploy to"
+           required: true
+           default: "staging"
+           type: choice
+           options:
+             - development
+             - staging
+             - production
+
+   # Environment configurations - CUSTOMIZE THESE FOR YOUR PROJECT
+   env:
+     # Name for your Docker image (usually your app's name in lowercase)
+     DOCKER_IMAGE: your-app-name
+
+     # Docker registry settings (using GitHub Container Registry by default)
+     DOCKER_REGISTRY: ghcr.io
+     DOCKER_USERNAME: ${{ github.actor }}
+     DOCKER_TOKEN: ${{ secrets.GHCR_PAT || github.token }}
+
+     # App configuration - UPDATE THESE TO MATCH YOUR DOCKERFILE
+     NODE_VERSION: "20" # Node.js version to use for testing/linting
+     APP_PORT: 3000 # Port your app listens on (must match EXPOSE in Dockerfile)
+     HEALTH_CHECK_PATH: "/health" # Health check endpoint (set to "" to disable)
+     STARTUP_DELAY: 5 # Seconds to wait for the app to start before health checks
+
+   jobs:
+     # Lint and test jobs go here (see full example in the repository)
+     # ...
+
+     build:
+       name: Build and Push Docker Image
+       runs-on: ubuntu-latest
+       needs: [lint, test] # Remove if lint/test jobs don't exist
+
+       steps:
+         - name: Checkout code
+           uses: actions/checkout@v4
+
+         # Get metadata for Docker tags
+         - name: Docker meta
+           id: meta
+           uses: docker/metadata-action@v5
+           with:
+             images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ env.DOCKER_IMAGE }}
+             tags: |
+               type=ref,event=branch
+               type=ref,event=tag
+               type=sha,format=long
+
+         # Login to GitHub Container Registry
+         - name: Log in to GHCR
+           uses: docker/login-action@v3
+           with:
+             registry: ${{ env.DOCKER_REGISTRY }}
+             username: ${{ github.actor }}
+             password: ${{ secrets.GHCR_PAT || github.token }}
+
+         # Build and push Docker image
+         - name: Build and push
+           uses: docker/build-push-action@v5
+           with:
+             context: .
+             push: ${{ github.event_name != 'pull_request' }}
+             tags: ${{ steps.meta.outputs.tags }}
+             labels: ${{ steps.meta.outputs.labels }}
+             cache-from: type=gha
+             cache-to: type=gha,mode=max
+
+     deploy:
+       name: Deploy to Render
+       runs-on: ubuntu-latest
+       needs: build
+       if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
+
+       steps:
+         - name: Get image tag
+           id: meta
+           uses: docker/metadata-action@v5
+           with:
+             images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ env.DOCKER_IMAGE }}
+             tags: |
+               type=ref,event=branch
+
+         # Trigger Render deployment using webhook
+         - name: Trigger Render Deploy Hook
+           if: env.RENDER_DEPLOY_HOOK != ''
+           run: |
+             echo "Triggering Render deployment..."
+             curl -X POST "$RENDER_DEPLOY_HOOK"
+           env:
+             RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK || '' }}
+   ```
+
+3. **Customize the following variables** in the workflow file:
+   - `DOCKER_IMAGE`: Your application's name (lowercase)
+   - `NODE_VERSION`: The Node.js version your app uses
+   - `APP_PORT`: The port your app listens on (must match Dockerfile's `EXPOSE`)
+   - `HEALTH_CHECK_PATH`: The health check endpoint (or empty string to disable)
+   - `STARTUP_DELAY`: Time to wait for app startup before health checks
+
+4. **Set up required secrets** in your GitHub repository:
+   - `GHCR_PAT`: GitHub Personal Access Token with `write:packages` scope
+   - `RENDER_DEPLOY_HOOK`: Webhook URL from your Render dashboard
+
+5. **Ensure your Dockerfile** is properly configured to:
+   - Expose the correct port (matching `APP_PORT`)
+   - Include any necessary environment variables
+   - Properly handle the application's entry point
+
+6. **Commit and push** the workflow file to trigger the pipeline.
+
+### 10. References
 
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
 - [Render Deploy Hooks](https://render.com/docs/deploy-hooks)

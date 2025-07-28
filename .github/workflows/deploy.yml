@@ -24,22 +24,29 @@ on:
           - staging
           - production
 
-# Environment configurations
+# Environment configurations - CUSTOMIZE THESE FOR YOUR PROJECT
 env:
-  # Customize these values for your app
-  DOCKER_IMAGE: nodejs-app  # Change this to your app's name
+  # Name for your Docker image (usually your app's name in lowercase)
+  DOCKER_IMAGE: my-nodejs-app
+  
+  # Docker registry settings (using GitHub Container Registry by default)
   DOCKER_REGISTRY: ghcr.io
   DOCKER_USERNAME: ${{ github.actor }}
   DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  VERSION: ${{ github.sha }}
-  # Configure your app's port (default: 3000)
-  APP_PORT: 3000
+  
+  # App configuration - UPDATE THESE TO MATCH YOUR DOCKERFILE
+  NODE_VERSION: "20"  # Node.js version to use for testing/linting
+  APP_PORT: 3000      # Port your app listens on (must match EXPOSE in Dockerfile)
+  HEALTH_CHECK_PATH: "/health"  # Health check endpoint (set to "" to disable)
+  STARTUP_DELAY: 5    # Seconds to wait for the app to start before health checks
 
+# Default working directory for all jobs
 defaults:
   run:
     working-directory: ./
 
 jobs:
+  # Lint and validate code
   lint:
     name: Lint and Validate
     runs-on: ubuntu-latest
@@ -48,16 +55,40 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
       - name: Install dependencies
         run: npm ci
-      # Uncomment and customize these steps based on your project's needs
-      # - name: Run ESLint
-      #   run: npm run lint
-      # - name: Check formatting
-      #   run: npx prettier --check .
+      
+      # Check if ESLint is configured and run it
+      - name: Check for ESLint config
+        id: eslint
+        run: |
+          if [ -f "package.json" ] && (grep -q '"lint"' package.json || [ -f ".eslintrc" ] || [ -f ".eslintrc.js" ] || [ -f ".eslintrc.json" ]); then
+            echo "eslint_configured=true" >> $GITHUB_OUTPUT
+          else
+            echo "eslint_configured=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run ESLint
+        if: steps.eslint.outputs.eslint_configured == 'true'
+        run: npm run lint
+      
+      # Check if Prettier is configured and run it
+      - name: Check for Prettier config
+        id: prettier
+        run: |
+          if [ -f "package.json" ] && (grep -q '"format:check"' package.json || [ -f ".prettierrc" ] || [ -f ".prettierrc.js" ] || [ -f ".prettierrc.json" ]); then
+            echo "prettier_configured=true" >> $GITHUB_OUTPUT
+          else
+            echo "prettier_configured=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Check formatting
+        if: steps.prettier.outputs.prettier_configured == 'true'
+        run: npx prettier --check .
 
+  # Run tests
   test:
     name: Run Tests
     needs: lint
@@ -67,19 +98,44 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
       - name: Install dependencies
         run: npm ci
+      # Check if tests are configured
+      - name: Check for test script
+        id: test_check
+        run: |
+          if [ -f "package.json" ] && grep -q '"test"' package.json; then
+            echo "tests_configured=true" >> $GITHUB_OUTPUT
+          else
+            echo "tests_configured=false" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Run tests
+        if: steps.test_check.outputs.tests_configured == 'true'
         run: npm test
-      # Uncomment and configure if you're using code coverage
-      # - name: Upload test coverage
-      #   uses: codecov/codecov-action@v4
-      #   with:
-      #     token: ${{ secrets.CODECOV_TOKEN }}
-      #     file: ./coverage/lcov.info
+      
+      # Check for and upload coverage if available
+      - name: Check for coverage
+        id: coverage_check
+        if: steps.test_check.outputs.tests_configured == 'true'
+        run: |
+          if [ -d "coverage" ] && [ -f "coverage/lcov.info" ]; then
+            echo "coverage_available=true" >> $GITHUB_OUTPUT
+          else
+            echo "coverage_available=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Upload test coverage
+        if: steps.coverage_check.outputs.coverage_available == 'true' && github.event_name != 'pull_request'
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN || 'dummy-token' }}
+          file: ./coverage/lcov.info
+          fail_ci_if_error: false
 
+  # Build and push Docker image
   build:
     name: Build and Push Image
     needs: test
@@ -88,14 +144,17 @@ jobs:
       image_tag: ${{ steps.meta.outputs.tags }}
     steps:
       - uses: actions/checkout@v4
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        
       - name: Login to Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKER_REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PAT }}
+          password: ${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}
+          
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -105,6 +164,7 @@ jobs:
             type=sha,format=long
             type=ref,event=branch
             type=ref,event=pr
+            
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -115,39 +175,79 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  render-deploy:
+  # Deploy to Render using the built Docker image
+  deploy:
     name: Deploy to Render
     runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: build
+    # Only run on push to main branch or on workflow_dispatch
+    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
+    
     steps:
-      - name: Trigger Render Deploy Hook
-        run: curl -X POST "$RENDER_DEPLOY_HOOK"
-        env:
-          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-      # Health check (customize the health check endpoint if needed)
-      - name: Start server in background
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      # Get the built image tag from the build job
+      - name: Get image tag
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            
+      # Login to GitHub Container Registry
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT || github.token }}
+          
+      # Pull the built image to verify it's accessible
+      - name: Verify image accessibility
         run: |
-          npm start &
-          sleep 5
-      - name: Health check with retries
+          docker pull ${{ steps.meta.outputs.tags }}
+          
+      # Trigger Render deployment using webhook
+      - name: Trigger Render Deploy Hook
+        if: env.RENDER_DEPLOY_HOOK != ''
+        run: |
+          echo "Triggering Render deployment..."
+          curl -X POST "$RENDER_DEPLOY_HOOK"
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK || '' }}
+          
+      # Health check (only runs if HEALTH_CHECK_PATH is set)
+      - name: Start server in background for health check
+        if: env.HEALTH_CHECK_PATH != ''
+        run: |
+          # Start the server in the background
+          docker run -d -p ${{ env.APP_PORT }}:${{ env.APP_PORT }} \
+            --name healthcheck-container \
+            -e PORT=${{ env.APP_PORT }} \
+            ${{ steps.meta.outputs.tags }}
+          # Wait for server to start
+          sleep ${{ env.STARTUP_DELAY }}
+          
+      - name: Run health check
+        if: env.HEALTH_CHECK_PATH != ''
         run: |
           for i in {1..10}; do
-            if curl -f http://localhost:${{ env.APP_PORT }}/health 2>/dev/null; then
-              echo "Server is up and running!"
+            if curl -f "http://localhost:${{ env.APP_PORT }}${{ env.HEALTH_CHECK_PATH }}" 2>/dev/null; then
+              echo "✅ Health check passed"
               exit 0
             fi
-            echo "Waiting for server to be ready... (Attempt $i/10)"
+            echo "⏳ Waiting for server to be ready... (Attempt $i/10)"
             sleep 2
           done
-          echo "Health check failed after 10 attempts"
+          echo "❌ Health check failed after 10 attempts"
           exit 1
-
-      - name: Stop background server
+          
+      - name: Stop and clean up
         if: always()
         run: |
-          pkill -f "node" || echo "No node process found"
-          # Ensure the port is freed
-          fuser -k ${{ env.APP_PORT }}/tcp 2>/dev/null || true
-        env:
-          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          # Stop and remove the test container
+          docker rm -f healthcheck-container 2>/dev/null || true
+          # Clean up any dangling images
+          docker system prune -f

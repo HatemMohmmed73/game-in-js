@@ -48,6 +48,19 @@ initDatabase();
 // Middleware
 app.use(express.json());
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  try {
+    // Check database connection
+    db.prepare('SELECT 1 as test').get();
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(500).json({ status: 'error', message: 'Service unavailable', error: error.message });
+  }
+});
+
+
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, "public")));
 
