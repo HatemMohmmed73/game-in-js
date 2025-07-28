@@ -1,22 +1,23 @@
-# 🛠️ Tutorial: Advanced CI/CD with GitHub Actions, Docker, and Render
+# 🎮 Tic-Tac-Toe Game with CI/CD Pipeline
 
-This guide will walk you through setting up a robust CI/CD pipeline for a Node.js app, including linting, testing, Docker image build & push, and automated deployment to Render.
+A Node.js based Tic-Tac-Toe game with a complete CI/CD pipeline using GitHub Actions, Docker, and Render for deployment.
 
 ---
 
 ### 1. Project Structure
 
-Your project should look something like this:
-
 ```
 .
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml         # Main CI/CD workflow
-├── Dockerfile                 # Docker build instructions
-├── package.json
-├── README.md
-└── ... (your app code)
+│       └── deploy.yml         # CI/CD workflow
+├── public/                   # Frontend assets
+│   └── game.js               # Game client code
+├── server.js                 # Backend server
+├── Dockerfile                # Docker configuration
+├── package.json              # Project dependencies
+├── render.yaml               # Render deployment config
+└── README.md                 # This file
 ```
 
 ---
@@ -25,10 +26,12 @@ Your project should look something like this:
 
 The pipeline will:
 
-- Lint and auto-format code (ESLint, Prettier)
-- Run all tests and upload coverage
-- Build a Docker image and push to GitHub Container Registry (GHCR)
-- Deploy to Render using a deploy hook
+- Validate package.json and check for syntax errors
+- Run tests if test scripts are defined
+- Execute linting if lint scripts are defined
+- Build and test Docker image
+- Push to GitHub Container Registry (main branch only)
+- Deploy to Render (main branch only)
 
 ---
 
@@ -116,34 +119,28 @@ http://localhost:10000
 
 ---
 
-### 5. GitHub Secrets Setup
+### 5. Environment Variables
 
-#### 5.1 Generate GitHub Personal Access Token (GHCR_PAT)
+#### 5.1 Required Environment Variables
 
-1. Go to your GitHub account settings:
-   - Click on your profile photo in the top-right corner
-   - Select **Settings**
-   - Scroll down to **Developer settings** in the left sidebar
-   - Click on **Personal access tokens** > **Tokens (classic)**
-   - Click **Generate new token** > **Generate new token (classic)**
+```env
+NODE_VERSION=18
+APP_PORT=10000
+HEALTH_CHECK_PATH=/health
+STARTUP_DELAY=5
+DOCKER_IMAGE=tic-tac-toe
+```
 
-2. Configure the token:
-   - **Note**: `GHCR_PAT for [Your-Repo-Name]`
-   - **Expiration**: Set an expiration or choose "No expiration" for long-lived tokens
-   - **Select scopes**:
-     - `repo` (Full control of private repositories)
-     - `write:packages` (Upload packages to GitHub Package Registry)
-     - `read:packages` (Download packages from GitHub Package Registry)
+#### 5.2 GitHub Secrets
 
-3. Generate and copy the token (you won't be able to see it again!)
+1. **GITHUB_TOKEN**
+   - Automatically provided by GitHub Actions
+   - No setup required
+   - Used for pushing Docker images to GitHub Container Registry
 
-4. Add the token to your repository:
-   - Go to your repository
-   - **Settings** > **Secrets and variables** > **Actions**
-   - Click **New repository secret**
-   - **Name**: `GHCR_PAT`
-   - **Value**: Paste your token
-   - Click **Add secret**
+2. **RENDER_DEPLOY_HOOK** (Optional, for Render deployments)
+   - Create a webhook in your Render dashboard
+   - Add it to your GitHub repository secrets
 
 #### 5.2 Create Render Deploy Hook (RENDER_DEPLOY_HOOK)
 
@@ -169,32 +166,98 @@ http://localhost:10000
 
 ---
 
-### 6. How Deployment to Render Works
+### 6. Deployment Flow
 
-- On push to `main`, the workflow triggers a `curl` POST to the Render deploy hook.
-- Render pulls the latest Docker image from GHCR and deploys your app.
+1. **On Push to Any Branch**
+   - Runs tests and validations
+   - Builds and tests Docker image
+   - Does NOT deploy
+
+2. **On Push to Main Branch**
+   - Runs all tests and validations
+   - Builds and pushes Docker image to GitHub Container Registry
+   - Triggers deployment to Render (if RENDER_DEPLOY_HOOK is configured)
+
+3. **Manual Deployment**
+   - Can be triggered from GitHub Actions UI
+   - Select the workflow and click "Run workflow"
+   - Choose environment (development/staging/production)
 
 ---
 
-### 7. How to Use and Maintain the Pipeline
+### 7. Local Development
 
-- **Push code** to any configured branch — the pipeline runs automatically.
-- **Check the Actions tab** for status and logs.
-- **Fix formatting errors** by running `npx prettier --write .` locally and committing the changes.
-- **Fix Docker push errors** by ensuring your `GHCR_PAT` secret is set up correctly.
-- **To deploy manually**, use the Actions tab and select workflow dispatch.
+#### Prerequisites
+- Node.js 18+
+- Docker (optional)
+
+#### Running Locally
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Start the development server:
+   ```bash
+   npm start
+   ```
+
+3. Open http://localhost:10000 in your browser
+
+#### Running with Docker
+
+1. Build the image:
+   ```bash
+   docker build -t tic-tac-toe .
+   ```
+
+2. Run the container:
+   ```bash
+   docker run -d -p 10000:10000 tic-tac-toe
+   ```
+
+3. Access at http://localhost:10000
 
 ---
 
 ### 8. Troubleshooting
 
-- **Formatting errors:** Run Prettier locally and commit.
-- **Docker push errors:** Check PAT scopes and secret name.
-- **Render deploy fails:** Verify the `RENDER_DEPLOY_HOOK` secret is correct.
+#### Common Issues
+
+1. **Docker Build Fails**
+   - Ensure Dockerfile exists in root directory
+   - Check for syntax errors in Dockerfile
+   - Verify all required files are included in the build context
+
+2. **Tests Fail**
+   - Run tests locally with `npm test`
+   - Check for environment-specific issues
+   - Ensure all dependencies are installed
+
+3. **Deployment Issues**
+   - Verify RENDER_DEPLOY_HOOK secret is set
+   - Check Render dashboard for deployment logs
+   - Ensure GitHub Actions has necessary permissions
+
+4. **Health Check Failures**
+   - Verify APP_PORT matches your application's port
+   - Check if the health check endpoint is implemented
+   - Increase STARTUP_DELAY if needed
 
 ---
 
-### 9. Setup deploy.yml for Any Node.js App
+### 9. CI/CD Pipeline Features
+
+- **Automatic Testing**: Runs on every push and pull request
+- **Docker Build**: Validates Docker configuration
+- **Branch Protection**: Prevents merging failing builds to main
+- **Container Health Checks**: Ensures application starts correctly
+- **Multi-Environment Support**: Development, staging, and production environments
+
+### 10. License
+
+This project is open source and available under the [MIT License](LICENSE).
 
 Follow these steps to set up the `deploy.yml` workflow in any Node.js project:
 
