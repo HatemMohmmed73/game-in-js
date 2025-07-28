@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "main"
+      - "master"
       - "develop"
       - "feature/**"
       - "release/**"
@@ -11,6 +12,7 @@ on:
   pull_request:
     branches:
       - "main"
+      - "master"
       - "develop"
   workflow_dispatch:
     inputs:
@@ -23,27 +25,38 @@ on:
           - development
           - staging
           - production
+      skip_tests:
+        description: "Skip running tests"
+        required: false
+        type: boolean
+        default: false
 
 # Environment configurations - CUSTOMIZE THESE FOR YOUR PROJECT
 env:
-  # Name for your Docker image (usually your app's name in lowercase)
-  DOCKER_IMAGE: tic-tac-toe
+  # Name for your Docker image (usually your repository name in lowercase)
+  # GitHub Actions does not support .toLowerCase() directly, so use the repository name as is
+  DOCKER_IMAGE: ${{ github.event.repository.name }}
 
   # Docker registry settings (using GitHub Container Registry by default)
   DOCKER_REGISTRY: ghcr.io
-  DOCKER_USERNAME: ${{ github.actor }}
-  DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  DOCKER_ORG: ${{ github.repository_owner }}
 
   # App configuration - UPDATE THESE TO MATCH YOUR DOCKERFILE
-  NODE_VERSION: "18" # Node.js version to use for testing/linting
-  APP_PORT: 10000 # Port your app listens on (must match EXPOSE in Dockerfile)
+  NODE_VERSION: "20" # Node.js version to use for testing/linting
+  APP_PORT: "3000" # Default port (override in your repository settings/variables)
   HEALTH_CHECK_PATH: "/health" # Health check endpoint (set to "" to disable)
-  STARTUP_DELAY: 5 # Seconds to wait for the app to start before health checks
+  STARTUP_DELAY: 10 # Seconds to wait for the app to start before health checks
+
+  # Build arguments (passed to Docker build)
+  DOCKER_BUILD_ARGS: ""
+
+  # Package manager detection (auto-detected, but can be overridden)
+  PACKAGE_MANAGER: "" # Leave empty for auto-detection, or set to "npm", "yarn", or "pnpm"
 
 # Default working directory for all jobs
 defaults:
   run:
-    working-directory: ./
+    working-directory: .
 
 jobs:
   # Lint and validate code
@@ -52,13 +65,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Detect package manager
+        id: package-manager
+        run: |
+          if [ -n "${{ env.PACKAGE_MANAGER }}" ]; then
+            echo "manager=${{ env.PACKAGE_MANAGER }}" >> $GITHUB_OUTPUT
+          elif [ -f "yarn.lock" ]; then
+            echo "manager=yarn" >> $GITHUB_OUTPUT
+          elif [ -f "pnpm-lock.yaml" ]; then
+            echo "manager=pnpm" >> $GITHUB_OUTPUT
+          else
+            echo "manager=npm" >> $GITHUB_OUTPUT
+          fi
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+          cache: ${{ steps.package-manager.outputs.manager }}
+
+      - name: Setup pnpm
+        if: steps.package-manager.outputs.manager == 'pnpm'
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
       - name: Install dependencies
-        run: npm ci
+        run: |
+          case "${{ steps.package-manager.outputs.manager }}" in
+            npm)
+              npm ci
+              ;;
+            yarn)
+              yarn install --frozen-lockfile
+              ;;
+            pnpm)
+              pnpm install --frozen-lockfile
+              ;;
+          esac
 
       # Check if ESLint is configured and run it
       - name: Check for ESLint config
@@ -72,7 +116,18 @@ jobs:
 
       - name: Run ESLint
         if: steps.eslint.outputs.eslint_configured == 'true'
-        run: npm run lint
+        run: |
+          case "${{ steps.package-manager.outputs.manager }}" in
+            npm)
+              npm run lint
+              ;;
+            yarn)
+              yarn lint
+              ;;
+            pnpm)
+              pnpm lint
+              ;;
+          esac
 
       # Check if Prettier is configured and run it
       - name: Check for Prettier config
@@ -95,13 +150,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Detect package manager
+        id: package-manager
+        run: |
+          if [ -n "${{ env.PACKAGE_MANAGER }}" ]; then
+            echo "manager=${{ env.PACKAGE_MANAGER }}" >> $GITHUB_OUTPUT
+          elif [ -f "yarn.lock" ]; then
+            echo "manager=yarn" >> $GITHUB_OUTPUT
+          elif [ -f "pnpm-lock.yaml" ]; then
+            echo "manager=pnpm" >> $GITHUB_OUTPUT
+          else
+            echo "manager=npm" >> $GITHUB_OUTPUT
+          fi
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+          cache: ${{ steps.package-manager.outputs.manager }}
+
+      - name: Setup pnpm
+        if: steps.package-manager.outputs.manager == 'pnpm'
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
       - name: Install dependencies
-        run: npm ci
+        run: |
+          case "${{ steps.package-manager.outputs.manager }}" in
+            npm)
+              npm ci
+              ;;
+            yarn)
+              yarn install --frozen-lockfile
+              ;;
+            pnpm)
+              pnpm install --frozen-lockfile
+              ;;
+          esac
       # Check if tests are configured
       - name: Check for test script
         id: test_check
@@ -114,7 +200,18 @@ jobs:
 
       - name: Run tests
         if: steps.test_check.outputs.tests_configured == 'true'
-        run: npm test
+        run: |
+          case "${{ steps.package-manager.outputs.manager }}" in
+            npm)
+              npm test
+              ;;
+            yarn)
+              yarn test
+              ;;
+            pnpm)
+              pnpm test
+              ;;
+          esac
 
       # Check for and upload coverage if available
       - name: Check for coverage
@@ -145,6 +242,7 @@ jobs:
       packages: write
     outputs:
       image_tag: ${{ steps.meta.outputs.tags }}
+      image_digest: ${{ steps.meta.outputs.digest }}
     steps:
       - uses: actions/checkout@v4
 
@@ -177,6 +275,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            ${{ env.DOCKER_BUILD_ARGS }}
 
   # Deploy to Render using the built Docker image
   deploy:
@@ -191,13 +292,10 @@ jobs:
         uses: actions/checkout@v4
 
       # Get the built image tag from the build job
-      - name: Get image tag
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ env.DOCKER_IMAGE }}
-          tags: |
-            type=ref,event=branch
+      # Get image tag from build job output
+      - name: Set image tag
+        id: image_tag
+        run: echo "::set-output name=tag::${{ needs.build.outputs.image_tag }}"
 
       # Login to GitHub Container Registry
       - name: Login to GitHub Container Registry
@@ -210,7 +308,7 @@ jobs:
       # Pull the built image to verify it's accessible
       - name: Verify image accessibility
         run: |
-          docker pull ${{ steps.meta.outputs.tags }}
+          docker pull ${{ steps.image_tag.outputs.tag }}
 
       # Trigger Render deployment using webhook
       - name: Trigger Render Deploy Hook
@@ -225,11 +323,14 @@ jobs:
       - name: Start server in background for health check
         if: env.HEALTH_CHECK_PATH != ''
         run: |
+          # Detect the port from Dockerfile or use default
+          DOCKER_PORT=$(docker inspect --format='{{range $p, $conf := .Config.ExposedPorts}}{{$p}}{{end}}' ${{ steps.image_tag.outputs.tag }} | cut -d'/' -f1)
+          if [ -z "$DOCKER_PORT" ]; then DOCKER_PORT="${{ env.APP_PORT }}"; fi
           # Start the server in the background
-          docker run -d -p ${{ env.APP_PORT }}:${{ env.APP_PORT }} \
+          docker run -d -p ${{ env.APP_PORT }}:${DOCKER_PORT} \
             --name healthcheck-container \
-            -e PORT=${{ env.APP_PORT }} \
-            ${{ steps.meta.outputs.tags }}
+            -e PORT=${DOCKER_PORT} \
+            ${{ steps.image_tag.outputs.tag }}
           # Wait for server to start
           sleep ${{ env.STARTUP_DELAY }}
 
