@@ -20,7 +20,7 @@ on:
 # Environment configurations - CUSTOMIZE THESE FOR YOUR PROJECT
 env:
   # Name for your Docker image (usually your app's name in lowercase)
-  DOCKER_IMAGE: your-app-name
+  DOCKER_IMAGE: tic-tac-toe
 
   # Docker registry settings (using GitHub Container Registry by default)
   DOCKER_REGISTRY: ghcr.io
@@ -28,8 +28,8 @@ env:
   DOCKER_TOKEN: ${{ secrets.GHCR_PAT || github.token }}
 
   # App configuration - UPDATE THESE TO MATCH YOUR DOCKERFILE
-  NODE_VERSION: "20" # Node.js version to use for testing/linting
-  APP_PORT: 3000 # Port your app listens on (must match EXPOSE in Dockerfile)
+  NODE_VERSION: "18" # Node.js version to use for testing/linting
+  APP_PORT: 10000 # Port your app listens on (must match EXPOSE in Dockerfile)
   HEALTH_CHECK_PATH: "/health" # Health check endpoint (set to "" to disable)
   STARTUP_DELAY: 5 # Seconds to wait for the app to start before health checks
 
