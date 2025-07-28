@@ -62,31 +62,29 @@ Your `Dockerfile` should:
 ### Dockerfile
 
 ```dockerfile
+# Use official Node.js LTS slim image
 FROM node:18-slim
 
+# Set working directory
 WORKDIR /usr/src/app
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    sqlite3 \
-    && rm -rf /var/lib/apt/lists/*
 
 # Copy package files and install dependencies
 COPY package*.json ./
-RUN npm install
+RUN npm install --production
 
-# Copy application code
+# Copy the rest of the application code
 COPY . .
 
-# Create data directory for SQLite
-RUN mkdir -p /usr/src/app/data
-
+# Set environment variables
 ENV NODE_ENV=production
 ENV PORT=10000
 
+# Expose the app port
 EXPOSE 10000
 
+# Start the application
 CMD ["node", "server.js"]
+
 ```
 
 ### Build the Docker Image
