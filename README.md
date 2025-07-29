@@ -277,21 +277,41 @@ Create a new file named `.github/workflows/deploy.yml` with the following conten
 ```yaml
 name: Deploy to Render
 
+# 📝 CUSTOMIZE: Update the branch name if you want to deploy from a different branch
 on:
   push:
     branches:
-      - main
+      - main  # ✅ CHANGE THIS to your deployment branch (e.g., 'master', 'production')
 
 jobs:
-  deploy:
+  test-dockerfile:
+    # This job will test the Dockerfile 
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - name: Test Docker build
+        run: docker build -t test-image .
+      - name: Test container
+        run: |
+          docker run -d -p 10000:10000 --name test-container test-image
+          sleep 5
+          curl -f http://localhost:10000/health || exit 1  # 📝 CUSTOMIZE: Change port and health check path to match your app
+          docker stop test-container
+          docker rm test-container
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v1
+  deploy-to-ghcr:
+    # This job will deploy the image to GHCR
+    needs: test-dockerfile
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
         with:
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -300,13 +320,16 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ github.actor }}/my-node-app:latest
+          tags: ghcr.io/hatemmohmmed73/game-in-js:latest  # 📝 CUSTOMIZE: Replace 'hatemmohmmed73' with your GitHub username and 'game-in-js' with your repository name
 
+  deploy-to-render:
+    # This job will deploy the image to Render
+    needs: deploy-to-ghcr
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy to Render
-        uses: renderinc/action@v1
-        with:
-          token: ${{ secrets.RENDER_DEPLOY_HOOK }}
-          service-id: your-service-id
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"  # 📝 CUSTOMIZE: Add your Render deploy hook URL to GitHub Secrets as 'RENDER_DEPLOY_HOOK'
 ```
 
 **Step 4: Set Up Render Deploy Hook**

@@ -1,9 +1,10 @@
 name: Deploy to Render
 
+# 📝 CUSTOMIZE: Update the branch name if you want to deploy from a different branch
 on:
   push:
     branches:
-      - main
+      - main  # ✅ CHANGE THIS to your deployment branch (e.g., 'master', 'production')
 
 jobs:
   test-dockerfile:
@@ -17,7 +18,7 @@ jobs:
         run: |
           docker run -d -p 10000:10000 --name test-container test-image
           sleep 5
-          curl -f http://localhost:10000/health || exit 1
+          curl -f http://localhost:10000/health || exit 1  # 📝 CUSTOMIZE: Change port and health check path to match your app
           docker stop test-container
           docker rm test-container
 
@@ -42,7 +43,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/hatemmohmmed73/game-in-js:latest
+          tags: ghcr.io/hatemmohmmed73/game-in-js:latest  # 📝 CUSTOMIZE: Replace 'hatemmohmmed73' with your GitHub username and 'game-in-js' with your repository name
 
   deploy-to-render:
     # This job will deploy the image to Render
@@ -51,4 +52,4 @@ jobs:
     steps:
       - name: Deploy to Render
         run: |
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"  # 📝 CUSTOMIZE: Add your Render deploy hook URL to GitHub Secrets as 'RENDER_DEPLOY_HOOK'
