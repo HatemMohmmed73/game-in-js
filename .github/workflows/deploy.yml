@@ -20,7 +20,8 @@ on:
 # Environment configurations - CUSTOMIZE THESE FOR YOUR PROJECT
 env:
   # Name for your Docker image (usually your app's name in lowercase)
-  DOCKER_IMAGE: tic-tac-toe
+  # This should be lowercase and use hyphens instead of spaces
+  DOCKER_IMAGE: ${{ vars.DOCKER_IMAGE || github.event.repository.name }}
 
   # Docker registry settings (using GitHub Container Registry by default)
   DOCKER_REGISTRY: ghcr.io
@@ -28,10 +29,10 @@ env:
   DOCKER_TOKEN: ${{ secrets.GHCR_PAT || github.token }}
 
   # App configuration - UPDATE THESE TO MATCH YOUR DOCKERFILE
-  NODE_VERSION: "18" # Node.js version to use for testing/linting
-  APP_PORT: 10000 # Port your app listens on (must match EXPOSE in Dockerfile)
-  HEALTH_CHECK_PATH: "/health" # Health check endpoint (set to "" to disable)
-  STARTUP_DELAY: 5 # Seconds to wait for the app to start before health checks
+  NODE_VERSION: ${{ vars.NODE_VERSION || '18' }} # Node.js version to use for testing/linting
+  APP_PORT: ${{ vars.APP_PORT || '3000' }} # Port your app listens on (must match EXPOSE in Dockerfile)
+  HEALTH_CHECK_PATH: ${{ vars.HEALTH_CHECK_PATH || '/health' }} # Health check endpoint (set to "" to disable)
+  STARTUP_DELAY: ${{ vars.STARTUP_DELAY || '5' }} # Seconds to wait for the app to start before health checks
 
 jobs:
   test:
@@ -49,7 +50,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
-      # Validate package.json syntax
+      # Validate package.json
       - name: Validate package.json
         run: |
           if [ -f "package.json" ]; then
