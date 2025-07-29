@@ -112,7 +112,6 @@ jobs:
             echo "Test job did not complete successfully. Status: $TEST_STATUS"
           fi
       - uses: actions/checkout@v3
-
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -137,9 +136,26 @@ jobs:
     name: Deploy to Render
     needs: build
     runs-on: ubuntu-latest
-    # Only deploy on push to main branch and if build succeeded
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.build.result == 'success'
+    # Debug information
+    env:
+      BRANCH: ${{ github.ref }}
+      EVENT_TYPE: ${{ github.event_name }}
+      BUILD_RESULT: ${{ needs.build.result }}
+    # Debug step to show why job might be skipped
+    if: |
+      always()
+      && (
+        (github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.build.result == 'success')
+        || github.event_name == 'workflow_dispatch'
+      )
     steps:
+      - name: Debug - Show environment info
+        run: |
+          echo "Branch: $BRANCH"
+          echo "Event type: $EVENT_TYPE"
+          echo "Build result: $BUILD_RESULT"
+          echo "Should deploy: $([ "$BRANCH" == 'refs/heads/main' ] && [ "$EVENT_TYPE" == 'push' ] && [ "$BUILD_RESULT" == 'success' ] && echo 'true' || echo 'false')"
+
       - name: Trigger Render Deploy Hook
         run: |
           echo "🚀 Triggering deployment to Render..."
