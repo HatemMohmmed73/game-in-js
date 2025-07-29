@@ -6,7 +6,8 @@ on:
       - main
 
 jobs:
-  test-build-health:
+  test-dockerfile:
+    # This job will test the Dockerfile 
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -20,8 +21,9 @@ jobs:
           docker stop test-container
           docker rm test-container
 
-  build-push-image:
-    needs: test-build-health
+  deploy-image:
+    # This job will deploy the image to GHCR
+    needs: test-dockerfile
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -40,10 +42,11 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}:latest
+          tags: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
 
   deploy-to-render:
-    needs: build-push-image
+    # This job will deploy the image to Render
+    needs: deploy-image
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to Render
