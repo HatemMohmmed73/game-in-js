@@ -40,7 +40,7 @@ body {
   padding: 15px;
   background: #fff;
   border-radius: 5px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 #stats h3 {
   margin-top: 0;
@@ -49,4 +49,4 @@ body {
 #stats p {
   margin: 5px 0;
   font-size: 0.9rem;
-} 
+}
