@@ -100,9 +100,17 @@ jobs:
     permissions:
       contents: read
       packages: write
-    # Always run this job when test job succeeds
-    if: always() && needs.test.result == 'success'
+    # Debug: Print test job status and run build job
+    if: always()
+    env:
+      TEST_STATUS: ${{ needs.test.result }}
     steps:
+      - name: Debug - Test job status
+        run: |
+          echo "Test job status: $TEST_STATUS"
+          if [ "$TEST_STATUS" != "success" ]; then
+            echo "Test job did not complete successfully. Status: $TEST_STATUS"
+          fi
       - uses: actions/checkout@v3
 
       - name: Log in to GitHub Container Registry
