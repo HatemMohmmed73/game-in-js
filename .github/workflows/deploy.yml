@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  test:
+  test-build-health:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -20,8 +20,8 @@ jobs:
           docker stop test-container
           docker rm test-container
 
-  build:
-    needs: test
+  build-push-image:
+    needs: test-build-health
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -42,8 +42,8 @@ jobs:
           push: true
           tags: ghcr.io/${{ github.repository }}:latest
 
-  deploy:
-    needs: build
+  deploy-to-render:
+    needs: build-push-image
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to Render
