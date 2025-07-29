@@ -146,23 +146,6 @@ env:
   STARTUP_DELAY: 5
 ```
 
-#### 5.2 Required Secrets
-
-| Secret Name          | Description                                              |
-| -------------------- | -------------------------------------------------------- |
-| `GITHUB_TOKEN`       | Automatically provided by GitHub Actions for GHCR access |
-| `RENDER_DEPLOY_HOOK` | Webhook URL from Render dashboard for deployments        |
-
-#### 5.3 Setting Up Render Deploy Hook
-
-1. In Render Dashboard, go to your web service
-2. Navigate to **Environment** > **Webhooks**
-3. Click **Add Webhook** with these settings:
-   - Name: `GitHub Actions Deploy`
-   - Environment: `Production`
-   - Branch: `main`
-4. Copy the webhook URL and add it to your GitHub repository secrets as `RENDER_DEPLOY_HOOK`
-
 #### 5.2 Create Render Deploy Hook (RENDER_DEPLOY_HOOK)
 
 1. Go to your Render Dashboard (https://dashboard.render.com/)
