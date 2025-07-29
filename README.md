@@ -527,7 +527,6 @@ For additional help, check the [GitHub Issues](https://github.com/your-username/
              curl -X POST "$RENDER_DEPLOY_HOOK"
            env:
              RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK || '' }}
-
    ```
 
 3. **Customize the following variables** in the workflow file:
