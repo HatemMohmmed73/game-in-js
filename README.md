@@ -146,27 +146,24 @@ env:
   STARTUP_DELAY: 5
 ```
 
-#### 5.2 Create Render Deploy Hook (RENDER_DEPLOY_HOOK)
+#### 5.2 Setting Up Render Deploy Hook
 
-1. Go to your Render Dashboard (https://dashboard.render.com/)
-2. Select your web service
-3. Click on **Environment** in the left sidebar
-4. Scroll down to the **Webhooks** section
-5. Click **Add Webhook**
-6. Configure the webhook:
-   - **Name**: `GitHub Actions Deploy`
-   - **Environment**: `Production` (or your preferred environment)
-   - **Branch**: `main` (or your default branch)
-   - **Auto-deploy**: Enable if you want automatic deployments
-7. Click **Create Webhook**
-8. Copy the **Webhook URL**
-9. Add it to your GitHub repository:
-   - Go to your repository
-   - **Settings** > **Secrets and variables** > **Actions**
+1. **Get the Webhook URL**
+   - Go to your Render Dashboard (https://dashboard.render.com/)
+   - Select your web service
+   - Click on **Manual Deploy** in the top right
+   - Look for the webhook URL in the manual deploy section
+   - It should look like: `https://api.render.com/deploy/srv-xxxxx`
+
+2. **Add to GitHub Secrets**
+   - Go to your GitHub repository
+   - Navigate to **Settings** > **Secrets and variables** > **Actions**
    - Click **New repository secret**
    - **Name**: `RENDER_DEPLOY_HOOK`
-   - **Value**: Paste the webhook URL
+   - **Value**: Paste the webhook URL from Render
    - Click **Add secret**
+
+> **Note:** For automatic deployments on push to main, you'll need to use Render's webhook feature which is available in their Pro plan. The free tier requires manual triggering of deployments.
 
 ---
 
