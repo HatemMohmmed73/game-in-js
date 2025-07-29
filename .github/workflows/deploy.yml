@@ -30,9 +30,9 @@ env:
 
   # App configuration - UPDATE THESE TO MATCH YOUR DOCKERFILE
   NODE_VERSION: ${{ vars.NODE_VERSION || '18' }} # Node.js version to use for testing/linting
-  APP_PORT: ${{ vars.APP_PORT || '3000' }} # Port your app listens on (must match EXPOSE in Dockerfile)
+  APP_PORT: ${{ vars.APP_PORT || '10000' }} # Port your app listens on (must match EXPOSE in Dockerfile)
   HEALTH_CHECK_PATH: ${{ vars.HEALTH_CHECK_PATH || '/health' }} # Health check endpoint (set to "" to disable)
-  STARTUP_DELAY: ${{ vars.STARTUP_DELAY || '5' }} # Seconds to wait for the app to start before health checks
+  STARTUP_DELAY: ${{ vars.STARTUP_DELAY || '10' }} # Seconds to wait for the app to start before health checks
 
 jobs:
   test:
