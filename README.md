@@ -295,7 +295,7 @@ jobs:
         run: |
           docker run -d -p 10000:10000 --name test-container test-image
           sleep 5
-          curl -f http://localhost:10000/health || exit 1  # 📝 CUSTOMIZE: Change port and health check path to match your app
+          curl -f http://localhost:10000/health || exit 1
           docker stop test-container
           docker rm test-container
 
@@ -320,7 +320,8 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/hatemmohmmed73/game-in-js:latest  # 📝 CUSTOMIZE: Replace 'hatemmohmmed73' with your GitHub username and 'game-in-js' with your repository name
+          # 📝 CUSTOMIZE: Replace 'hatemmohmmed73' with your GitHub username and 'game-in-js' with your repository name
+          tags: ghcr.io/hatemmohmmed73/game-in-js:latest
 
   deploy-to-render:
     # This job will deploy the image to Render
