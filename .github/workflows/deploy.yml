@@ -92,6 +92,8 @@ jobs:
     name: Build and Push Image
     needs: test
     runs-on: ubuntu-latest
+    # Run on all branches except pull requests
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     outputs:
       image_tag: ${{ steps.meta.outputs.tags }}
     steps:
@@ -132,6 +134,7 @@ jobs:
     name: Deploy to Render
     needs: build
     runs-on: ubuntu-latest
+    # Only deploy on push to main branch
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - name: Trigger Render Deploy Hook
