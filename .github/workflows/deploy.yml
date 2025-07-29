@@ -21,7 +21,7 @@ jobs:
           docker stop test-container
           docker rm test-container
 
-  deploy-image:
+  deploy-to-ghcr:
     # This job will deploy the image to GHCR
     needs: test-dockerfile
     runs-on: ubuntu-latest
@@ -42,11 +42,11 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
+          tags: ghcr.io/${{ github.repository_owner }}/game-in-js:latest
 
   deploy-to-render:
     # This job will deploy the image to Render
-    needs: deploy-image
+    needs: deploy-to-ghcr
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to Render
