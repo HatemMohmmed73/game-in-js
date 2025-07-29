@@ -316,9 +316,9 @@ For additional help, check the [GitHub Issues](https://github.com/your-username/
 
    on:
      push:
-       branches: [main, develop, "feature/*", "release/*", "hotfix/*"]
+       branches: ["**"] # Run on all branches
      pull_request:
-       branches: [main, develop]
+       branches: ["**"] # Run on PRs to any branch
      workflow_dispatch:
        inputs:
          environment:
@@ -334,7 +334,7 @@ For additional help, check the [GitHub Issues](https://github.com/your-username/
    # Environment configurations - CUSTOMIZE THESE FOR YOUR PROJECT
    env:
      # Name for your Docker image (usually your app's name in lowercase)
-     DOCKER_IMAGE: your-app-name
+     DOCKER_IMAGE: tic-tac-toe
 
      # Docker registry settings (using GitHub Container Registry by default)
      DOCKER_REGISTRY: ghcr.io
@@ -342,46 +342,158 @@ For additional help, check the [GitHub Issues](https://github.com/your-username/
      DOCKER_TOKEN: ${{ secrets.GHCR_PAT || github.token }}
 
      # App configuration - UPDATE THESE TO MATCH YOUR DOCKERFILE
-     NODE_VERSION: "20" # Node.js version to use for testing/linting
-     APP_PORT: 3000 # Port your app listens on (must match EXPOSE in Dockerfile)
+     NODE_VERSION: "18" # Node.js version to use for testing/linting
+     APP_PORT: 10000 # Port your app listens on (must match EXPOSE in Dockerfile)
      HEALTH_CHECK_PATH: "/health" # Health check endpoint (set to "" to disable)
      STARTUP_DELAY: 5 # Seconds to wait for the app to start before health checks
 
    jobs:
-     # Lint and test jobs go here (see full example in the repository)
-     # ...
-
-     build:
-       name: Build and Push Docker Image
+     test:
+       name: Test and Validate
        runs-on: ubuntu-latest
-       needs: [lint, test] # Remove if lint/test jobs don't exist
 
        steps:
          - name: Checkout code
            uses: actions/checkout@v4
 
-         # Get metadata for Docker tags
-         - name: Docker meta
-           id: meta
-           uses: docker/metadata-action@v5
+         # Node.js environment setup and validation
+         - name: Set up Node.js
+           uses: actions/setup-node@v4
            with:
-             images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ env.DOCKER_IMAGE }}
+             node-version: ${{ env.NODE_VERSION }}
+             cache: "npm"
+
+         # Validate package.json syntax
+         - name: Validate package.json
+           run: |
+             if [ -f "package.json" ]; then
+               node -e "JSON.parse(require('fs').readFileSync('package.json', 'utf8'))"
+               echo "✅ package.json is valid JSON"
+             else
+               echo "ℹ️ No package.json found, skipping validation"
+             fi
+
+         # Install dependencies if package.json exists
+         - name: Install dependencies
+           if: contains(github.event_name, 'push') || contains(github.event_name, 'pull_request')
+           run: |
+             if [ -f "package-lock.json" ]; then
+               npm ci
+             elif [ -f "pnpm-lock.yaml" ]; then
+               npm install -g pnpm
+               pnpm install --frozen-lockfile
+             elif [ -f "yarn.lock" ]; then
+               npm install -g yarn
+               yarn install --frozen-lockfile
+             elif [ -f "package.json" ]; then
+               npm install
+             fi
+
+         # Read package.json
+         - name: Read package.json
+           id: package-json
+           uses: actions/github-script@v7
+           with:
+             script: |
+               const fs = require('fs');
+               const packageJson = fs.existsSync('package.json') ? JSON.parse(fs.readFileSync('package.json', 'utf8')) : {};
+               return {
+                 hasTypeScript: !!(
+                   (packageJson.dependencies && packageJson.dependencies.typescript) ||
+                   (packageJson.devDependencies && packageJson.devDependencies.typescript)
+                 ),
+                 hasTestScript: !!(packageJson.scripts && packageJson.scripts.test),
+                 hasLintScript: !!(packageJson.scripts && packageJson.scripts.lint)
+               };
+
+         # Run type checking if TypeScript is used
+         - name: Type Check (if TypeScript is used)
+           if: steps.package-json.outputs.hasTypeScript == 'true' && contains(github.event_name, 'push')
+           run: npx tsc --noEmit
+
+         # Run tests if test script exists
+         - name: Run tests
+           if: steps.package-json.outputs.hasTestScript == 'true'
+           run: npm test
+
+         # Run linting if lint script exists
+         - name: Run linting
+           if: steps.package-json.outputs.hasLintScript == 'true'
+           run: npm run lint
+
+         # Validate Dockerfile exists and build test
+         - name: Validate Dockerfile
+           run: |
+             if [ ! -f "Dockerfile" ]; then
+               echo "❌ Error: Dockerfile not found"
+               exit 1
+             fi
+             echo "✅ Dockerfile found"
+
+         # Test Docker build
+         - name: Test Docker build
+           run: |
+             docker build -t test-image .
+             echo "✅ Docker build successful"
+
+         # Test Docker run (if the app has a health check)
+         - name: Test Docker container
+           if: env.HEALTH_CHECK_PATH != ''
+           run: |
+             CONTAINER_ID=$(docker run -d -p ${{ env.APP_PORT }}:${{ env.APP_PORT }} test-image)
+             echo "Waiting for container to start..."
+             sleep ${{ env.STARTUP_DELAY || 5 }}
+
+             # Try to access the health check endpoint
+             STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${{ env.APP_PORT }}${{ env.HEALTH_CHECK_PATH || '/health' }} || true)
+
+             # Clean up
+             docker stop $CONTAINER_ID
+             docker rm $CONTAINER_ID
+
+             if [ "$STATUS" != "200" ] && [ "$STATUS" != "" ]; then
+               echo "❌ Health check failed with status: $STATUS"
+               exit 1
+             fi
+             echo "✅ Container health check passed"
+
+     # This job will only run on the main branch or when manually triggered
+     build:
+       needs: test
+       name: Build and Push Docker Image
+       runs-on: ubuntu-latest
+       permissions:
+         contents: read
+         packages: write
+       # Only run on main branch or workflow_dispatch
+       if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+
+       steps:
+         - name: Checkout code
+           uses: actions/checkout@v3
+
+         - name: Set up Docker Buildx
+           uses: docker/setup-buildx-action@v2
+
+         - name: Extract metadata (tags, labels) for Docker
+           id: meta
+           uses: docker/metadata-action@v4
+           with:
+             images: ghcr.io/${{ github.repository }}
              tags: |
                type=ref,event=branch
-               type=ref,event=tag
+               type=ref,event=pr
                type=sha,format=long
 
-         # Login to GitHub Container Registry
-         - name: Log in to GHCR
-           uses: docker/login-action@v3
+         - name: Log in to GitHub Container Registry
+           uses: docker/login-action@v2
            with:
-             registry: ${{ env.DOCKER_REGISTRY }}
+             registry: ghcr.io
              username: ${{ github.actor }}
-             password: ${{ secrets.GHCR_PAT || github.token }}
+             password: ${{ secrets.GITHUB_TOKEN }}
 
-         # Build and push Docker image
-         - name: Build and push
-           uses: docker/build-push-action@v5
+         - name: Build and push Docker image
+           uses: docker/build-push-action@v4
            with:
              context: .
              push: ${{ github.event_name != 'pull_request' }}
@@ -390,10 +502,12 @@ For additional help, check the [GitHub Issues](https://github.com/your-username/
              cache-from: type=gha
              cache-to: type=gha,mode=max
 
+     # This job will only run on the main branch after successful build
      deploy:
        name: Deploy to Render
        runs-on: ubuntu-latest
        needs: build
+       # Only run on main branch push or workflow_dispatch
        if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
 
        steps:
@@ -413,6 +527,7 @@ For additional help, check the [GitHub Issues](https://github.com/your-username/
              curl -X POST "$RENDER_DEPLOY_HOOK"
            env:
              RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK || '' }}
+
    ```
 
 3. **Customize the following variables** in the workflow file:
