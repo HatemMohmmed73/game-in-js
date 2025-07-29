@@ -63,7 +63,7 @@ jobs:
         run: npm audit --audit-level=moderate
 
       - name: Check for outdated dependencies
-        run: npx npm-check-updates --error-level=2
+        run: npx npm-check-updates --error-on-version
 
       - name: Check for unused dependencies
         run: npx depcheck
