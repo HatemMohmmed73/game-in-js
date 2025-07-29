@@ -24,9 +24,9 @@ defaults:
     working-directory: ./
 
 jobs:
-  # Lint and validate code
+  # Lint, validate, and check for bugs
   lint:
-    name: Lint and Validate
+    name: Code Quality Checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,8 +40,34 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run ESLint
-        run: npm run lint
+      - name: Run ESLint with security rules
+        run: |
+          npx eslint . \
+            --max-warnings=0 \
+            --ext .js,.jsx,.ts,.tsx \
+            --rule "security/detect-unsafe-regex: error" \
+            --rule "security/detect-non-literal-regexp: error" \
+            --rule "security/detect-object-injection: error"
+
+      - name: Check for TypeScript configuration
+        id: check_ts
+        run: |
+          if [ -f "tsconfig.json" ]; then
+            echo "tsconfig_exists=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run TypeScript type checking
+        if: steps.check_ts.outputs.tsconfig_exists == 'true'
+        run: npx tsc --noEmit
+
+      - name: Run security audit
+        run: npm audit --audit-level=moderate
+
+      - name: Check for outdated dependencies
+        run: npx npm-check-updates --error-level=2
+
+      - name: Check for unused dependencies
+        run: npx depcheck
 
       - name: Check formatting
         run: npx prettier --check .
@@ -77,40 +103,30 @@ jobs:
     name: Build and Push Image
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     # Always run this job when test job succeeds
     if: always() && needs.test.result == 'success'
-    outputs:
-      image_tag: ${{ steps.meta.outputs.tags }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Container Registry
-        uses: docker/login-action@v3
+      - uses: actions/checkout@v3
+      
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
         with:
-          registry: ${{ env.DOCKER_REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ env.DOCKER_IMAGE }}
-          tags: |
-            type=sha,format=long
-            type=ref,event=branch
-            type=ref,event=pr
-
+          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v4
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ghcr.io/${{ github.repository }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
