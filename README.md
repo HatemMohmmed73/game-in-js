@@ -292,11 +292,7 @@ docker build -t tic-tac-toe .
 docker run -p 10000:10000 tic-tac-toe
 ```
 
-### 11. License
-
-This project is open source and available under the [MIT License](LICENSE).
-
-### 12. Troubleshooting
+### 11. Troubleshooting
 
 #### Common Issues
 
@@ -439,9 +435,3 @@ For additional help, check the [GitHub Issues](https://github.com/your-username/
    - Properly handle the application's entry point
 
 6. **Commit and push** the workflow file to trigger the pipeline.
-
-### 10. References
-
-- [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [Render Deploy Hooks](https://render.com/docs/deploy-hooks)
-- [GitHub Packages: Docker](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
