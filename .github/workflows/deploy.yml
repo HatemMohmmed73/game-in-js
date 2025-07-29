@@ -1,29 +1,14 @@
 name: Tic-Tac-Toe CI/CD Pipeline
 
 on:
+  # Run on push to any branch
   push:
-    branches:
-      - "main"
-      - "develop"
-      - "feature/**"
-      - "release/**"
-      - "hotfix/**"
+    branches-ignore: []
+  # Run on pull requests
   pull_request:
-    branches:
-      - "main"
-      - "develop"
+    branches-ignore: []
+  # Allow manual trigger
   workflow_dispatch:
-    inputs:
-      environment:
-        description: "Environment to deploy to"
-        required: true
-        default: "staging"
-        type: choice
-        options:
-          - development
-          - staging
-          - production
-          - production
 
 # Environment configurations
 env:
@@ -92,8 +77,8 @@ jobs:
     name: Build and Push Image
     needs: test
     runs-on: ubuntu-latest
-    # Run on all branches except pull requests
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # Always run this job when test job succeeds
+    if: always() && needs.test.result == 'success'
     outputs:
       image_tag: ${{ steps.meta.outputs.tags }}
     steps:
@@ -134,8 +119,8 @@ jobs:
     name: Deploy to Render
     needs: build
     runs-on: ubuntu-latest
-    # Only deploy on push to main branch
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Only deploy on push to main branch and if build succeeded
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.build.result == 'success'
     steps:
       - name: Trigger Render Deploy Hook
         run: |
