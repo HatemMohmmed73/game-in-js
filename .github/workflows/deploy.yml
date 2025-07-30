@@ -1,56 +1,86 @@
 name: Deploy to Render
 
-# 📝 CUSTOMIZE: Update the branch name if you want to deploy from a different branch
 on:
   push:
-    branches:
-      - main  # ✅ CHANGE THIS to your deployment branch (e.g., 'master', 'production')
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  DOCKER_IMAGE: your-app-name
+  DOCKER_REGISTRY: ghcr.io
+  DOCKER_USERNAME: ${{ github.actor }}
+  DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  NODE_VERSION: "20"
+  APP_PORT: 10000
+  HEALTH_CHECK_PATH: "/health"
+  STARTUP_DELAY: 5
 
 jobs:
-  test-dockerfile:
-    # This job will test the Dockerfile 
+  test-and-validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test
+        continue-on-error: true
+      
+      - name: Run linting
+        run: npm run lint
+        continue-on-error: true
+      
       - name: Test Docker build
         run: docker build -t test-image .
-      - name: Test container
+      
+      - name: Test container health
         run: |
-          # 📝 CUSTOMIZE: Change port and health check path to match your app port that using in docker file 
-          docker run -d -p 10000:10000 --name test-container test-image
-          sleep 5
-          curl -f http://localhost:10000/health || exit 1 
+          docker run -d -p ${{ env.APP_PORT }}:${{ env.APP_PORT }} --name test-container test-image
+          sleep ${{ env.STARTUP_DELAY }}
+          curl -f http://localhost:${{ env.APP_PORT }}${{ env.HEALTH_CHECK_PATH }} || exit 1
           docker stop test-container
           docker rm test-container
 
-  deploy-to-ghcr:
-    # This job will deploy the image to GHCR
-    needs: test-dockerfile
+  build-and-push:
+    needs: test-and-validate
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_TOKEN }}
+      
       - name: Build and push Docker image
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          # 📝 CUSTOMIZE: Replace 'hatemmohmmed73' with your GitHub username and 'game-in-js' with your repository name
-          tags: ghcr.io/hatemmohmmed73/game-in-js:latest  
+          tags: ${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy-to-render:
-    # This job will deploy the image to Render
-    needs: deploy-to-ghcr
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to Render
         run: |
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"  
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
