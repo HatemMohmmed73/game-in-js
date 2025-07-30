@@ -132,19 +132,20 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.DOCKER_REGISTRY }}
-          username: ${{ env.DOCKER_USERNAME }}
-          password: ${{ env.DOCKER_TOKEN }}
+      - name: Set lowercase repository name
+        id: lowercase
+        run: |
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_TAG="${{ env.DOCKER_REGISTRY }}/${OWNER_LOWER}/${{ env.DOCKER_IMAGE }}:latest"
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "Using image tag: $IMAGE_TAG"
       
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}:latest
+          tags: ${{ steps.lowercase.outputs.IMAGE_TAG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
