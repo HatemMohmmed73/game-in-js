@@ -165,18 +165,20 @@ FROM node:20-slim
 
 WORKDIR /usr/src/app
 
-# Install runtime dependencies and build tools for native modules
+# Install build tools for native modules
 RUN apt-get update && apt-get install -y \
-    sqlite3 \
     build-essential \
     python3 \
+    sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies and rebuild native modules (important for native modules)
-RUN npm ci --only=production && npm rebuild
+# Clean install and rebuild native modules for this Node.js version
+RUN rm -rf node_modules package-lock.json && \
+    npm install --production && \
+    npm rebuild
 
 # Copy application code
 COPY . .
