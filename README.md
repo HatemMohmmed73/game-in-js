@@ -43,10 +43,10 @@ This is your complete, copy-paste-ready guide to set up automated deployment for
 
 Copy these exact files into your project root directory:
 
-#### 1.1 Create `.github/workflows/deploy.yml`
+#### 1.1 Create `.github/workflows/three-stage.yml`
 
 ```yaml
-name: Deploy to Render
+name: 3-stage CI/CD pipeline
 
 on:
   push:
