@@ -2,15 +2,21 @@ name: Deploy to Render
 
 on:
   push:
+    # 📝 CHANGE THIS: Update branch name if deploying from different branch
     branches: [ main ]
   workflow_dispatch:
 
 env:
+  # 📝 CHANGE THIS: Your Docker image name (e.g., "my-node-app")
   DOCKER_IMAGE: your-app-name
+  
+  # ✅ These are standard - no change needed
   DOCKER_REGISTRY: ghcr.io
   DOCKER_USERNAME: ${{ github.actor }}
   DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   NODE_VERSION: "20"
+  
+  # 📝 CHANGE THESE: Match your app's configuration
   APP_PORT: 10000
   HEALTH_CHECK_PATH: "/health"
   STARTUP_DELAY: 5
@@ -44,10 +50,22 @@ jobs:
       - name: Test container health
         run: |
           docker run -d -p ${{ env.APP_PORT }}:${{ env.APP_PORT }} --name test-container test-image
-          sleep ${{ env.STARTUP_DELAY }}
-          curl -f http://localhost:${{ env.APP_PORT }}${{ env.HEALTH_CHECK_PATH }} || exit 1
+          echo "Waiting for server to start..."
+          for i in {1..30}; do
+            if curl -f http://localhost:${{ env.APP_PORT }}${{ env.HEALTH_CHECK_PATH }}; then
+              echo "Health check passed!"
+              docker stop test-container
+              docker rm test-container
+              exit 0
+            fi
+            echo "Attempt $i/30 - server not ready yet"
+            sleep 2
+          done
+          echo "Health check failed after 60 seconds"
+          docker logs test-container
           docker stop test-container
           docker rm test-container
+          exit 1
 
   build-and-push:
     needs: test-and-validate
@@ -73,6 +91,7 @@ jobs:
         with:
           context: .
           push: true
+          # 📝 CHANGE THIS: Update the tag to match your GitHub username and repo
           tags: ${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -83,4 +102,5 @@ jobs:
     steps:
       - name: Deploy to Render
         run: |
+          # 📝 SET THIS: Add your Render deploy hook URL to GitHub Secrets as 'RENDER_DEPLOY_HOOK'
           curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
