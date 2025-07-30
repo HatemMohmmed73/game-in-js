@@ -12,10 +12,11 @@ RUN apt-get update && apt-get install -y \
 # Copy package files
 COPY package*.json ./
 
-# Clean install and rebuild native modules for this Node.js version
-RUN rm -rf node_modules package-lock.json && \
-    npm install --production && \
-    npm rebuild
+# Install dependencies from source to ensure compatibility
+RUN npm ci --only=production || npm install --production
+
+# Force rebuild of native modules for this Node.js version
+RUN npm rebuild better-sqlite3 || npm install better-sqlite3 --build-from-source
 
 # Copy application code
 COPY . .
