@@ -1,4 +1,4 @@
-FROM node:18-slim
+FROM node:20-slim
 
 WORKDIR /usr/src/app
 
@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
 
 # Copy package files and install dependencies
 COPY package*.json ./
-RUN npm install
+RUN npm ci --only=production
 
 # Copy application code
 COPY . .
