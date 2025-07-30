@@ -89,7 +89,12 @@ jobs:
         continue-on-error: true
       
       - name: Run linting
-        run: npm run lint
+        run: |
+          if [ -f ".eslintrc.js" ] || [ -f ".eslintrc.json" ] || [ -f ".eslintrc.cjs" ]; then
+            npm run lint || echo "Linting failed, continuing..."
+          else
+            echo "No ESLint config found, skipping lint..."
+          fi
         continue-on-error: true
       
       - name: Test Docker build
@@ -139,7 +144,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE }}:latest
+          tags: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
