@@ -15,7 +15,7 @@ This is your complete, copy-paste-ready guide to set up automated deployment for
 ## 📋 Prerequisites (2 minutes setup)
 
 **You only need 3 things:**
-- A GitHub repository (free)
+- A GitHub repository (free)jlhcDOLBOCB
 - A Render account (free) 
 - Docker installed on your machine (for local testing)
 
